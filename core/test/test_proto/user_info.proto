@@ -1,0 +1,12 @@
+syntax="proto2";
+package user_feature;
+
+message UserInfo {
+    optional int64 user_id = 1;
+    optional string current_city = 2;
+    optional string user_current_region = 3;
+    optional string business_region = 4;
+    optional string ip = 5;
+    optional string phone_model = 6;
+    optional string business = 8;
+}

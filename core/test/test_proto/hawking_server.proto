@@ -1,0 +1,198 @@
+syntax="proto2";
+package hawking.server;
+import "node_content.proto";
+import "error_code.proto";
+import "user_info.proto";
+import "google/protobuf/empty.proto";
+import "hawking_embedding.proto";
+
+option cc_enable_arenas = true;
+option cc_generic_services = true;
+
+message RetrieveInfo {
+ optional string task_name = 1; // such as index1
+ optional string space_name = 2; // such as video
+ optional string cluster_name = 3; // such as online
+ repeated float user_emb = 4;
+ optional string user_embedding_name = 5;
+ optional int64 user_embedding_version = 6;
+ optional int32 topk = 7;
+ optional bool ignore_low_score_filter = 8;
+ repeated Embedding query_embedding_list = 9; // used for batch-u2i
+ repeated hawking.util.FilterColumn filter_columns = 10;
+ repeated hawking.util.SelectColumn select_columns = 11;
+ optional int32 max_filter_count = 12;
+}
+
+message ItemInfo {
+ optional int64 item_id = 1;
+ optional float score = 2;
+ optional int64 author_id = 3;
+ optional string attrs = 4;
+ repeated hawking.util.SelectColumn select_columns = 5;
+}
+
+message HawkingUserRequest {
+ optional string requestid = 1;
+ optional string country = 2;
+ optional string abtest_config = 3;
+ optional user_feature.UserInfo user_info = 4;
+ optional string filter_items = 8;
+ repeated string long_time_expose_filter = 9; // vector<long time expose bloomfilter string>
+ repeated int64 short_time_expose_filter = 10; // vector<short time expose id>
+ repeated RetrieveInfo retrieve_info = 11;  // multi retrieve of different index
+ optional bool debug_mode = 12; // set true when test
+}
+
+message RetrievalResult {
+ optional string task_name = 1;
+ repeated ItemInfo item_list = 2;
+ optional hawking.util.HawkingRecallRetCode ret_code = 3;
+ optional int64 label = 4; // used for i2i
+ repeated hawking.util.SelectColumn select_columns = 5;
+}
+
+message HawkingResponse {
+ repeated RetrievalResult response = 1;
+}
+
+message HawkingItemRequest {
+ optional int64 label = 1;
+ repeated RetrieveInfo retrieve_info = 2;
+ repeated int64 label_list = 3;
+}
+
+message HawkingEmbRequest {
+ repeated int64 label_list = 1;
+ optional RetrieveInfo retrieve_info = 2;
+}
+
+message Emb {
+ optional hawking.util.HawkingRecallRetCode ret_code = 1;
+ repeated float emb_list = 2;
+}
+
+message HawkingEmbResponse {
+ repeated Emb embedding = 1;
+ optional int32 status_code = 2;
+ optional string msg = 3;
+}
+
+message MetaRequest {
+ repeated RetrieveInfo retrieve_info = 1;
+}
+
+message MetaResponse {
+ repeated hawking.util.LoadContent response = 1; // metainfo will from zk's get from {space}/{load}/{index}
+}
+
+message HawkingDistanceRequest {
+ optional int64 label_base = 1;
+ optional int64 label_compare = 2;
+ repeated RetrieveInfo retrieve_info = 3;
+}
+
+message DistanceInfo {
+ optional float distance = 1;
+ optional hawking.util.HawkingRecallRetCode ret_code = 2;
+ optional string msg = 3;
+ optional string embedding_name = 4;
+ optional string country = 5;
+}
+
+message HawkingDistanceResponse {
+ repeated DistanceInfo response = 1;
+}
+
+message ModelInfo {
+ optional string model = 1;
+}
+
+message ModelList {
+ optional int32 status_code = 1;
+ optional string msg = 2;
+ repeated ModelInfo model = 3;
+}
+
+message ResourceProfile {
+ optional int32 cpu_percent = 1; // such as 90 is means 90%
+ optional int32 cpu_count = 2;   // such as 10 is means 10 cores
+ optional int32 memory_percent = 3; // such as 90 is means 90%
+ optional int32 memory_size = 4;    // sucha as 300 is means 300MB
+};
+
+message InferenceParameter {
+  optional string model_name = 1;       // 粗排浅层图的模型名称
+  repeated string target_names = 2;      // 粗排浅层图输出目标名称，单目标，可不填
+  optional string user_embedding_name = 3; // 浅层图模型输入user embedding输入的input name
+  optional string item_embedding_name = 4; // 浅层图模型输入item embedding输入的input name
+};
+
+// target 对应模型侧之 head. 多目标于论文中多以 multi-task 出现，
+// 于模型训练中又以 head 出现，部分论文中亦有以 target 命名。
+// 因 task 与 hawking 中已用的 task 含义冲突，且在沟通中多以多目标代之，
+// 再者现有架构服务亦使用 target 代之. 随此处以 target 命名.
+// 此处简述以释疑。
+message RoughPredictTarget {
+ optional Embedding user_embs = 1;
+ optional string target_name = 2;
+ optional string params = 3; // a json
+ optional string op = 4; // IP, L2, MLP等
+ optional InferenceParameter mlp_param = 5;  
+};
+
+message RoughPredictInfo {
+ optional string space_name = 1; // such as video
+ optional string task_name = 2; // such as index1
+ optional string cluster_name = 3; // such as online
+ repeated RoughPredictTarget targets = 4;
+ optional string user_embedding_name = 5;
+ optional int64 user_embedding_version = 6;
+};
+
+message RoughPredictRequest {
+ optional string requestid = 1;
+ optional string country = 2;
+ optional string abtest_config = 3;
+ optional user_feature.UserInfo user_info = 4;
+ repeated int64 item_ids = 5;
+ repeated RoughPredictInfo rough_predict_info = 6;
+};
+
+message RoughPredictScore {
+ optional int64 item_id = 1;
+ repeated float scores = 2;
+};
+
+message TargetInfo {
+ optional string space_name = 1;
+ optional string task_name = 2;
+ optional string target_name = 3;
+ optional hawking.util.HawkingRecallRetCode ret_code = 4;
+ optional int32 dim = 5;
+};
+
+message RoughPredictResponse {
+ optional string requestid = 1;
+ repeated TargetInfo target_infos = 2;
+ repeated RoughPredictScore results = 3;
+};
+
+service HawkingRecallService {
+ rpc retrieve(HawkingUserRequest) returns (HawkingResponse) {}
+ rpc retrieveByLabel(HawkingItemRequest) returns (HawkingResponse) {}
+ rpc retrieveByLabels(HawkingItemRequest) returns (HawkingResponse) {}
+ rpc getDistance(HawkingDistanceRequest) returns (HawkingDistanceResponse) {}
+ rpc retrieveOnlyAnn(HawkingUserRequest) returns (HawkingResponse) {}
+}
+
+service HawkingMetaService {
+ rpc getMeta(MetaRequest) returns (MetaResponse) {}
+ rpc getAllModel(RetrieveInfo) returns (ModelList) {}
+ rpc getProfile(google.protobuf.Empty) returns (ResourceProfile) {}
+ rpc getEmbedding(HawkingEmbRequest) returns (HawkingEmbResponse) {}
+}
+
+service HawkingRoughPredictService {
+ rpc roughPredict(RoughPredictRequest) returns (RoughPredictResponse) {}
+}

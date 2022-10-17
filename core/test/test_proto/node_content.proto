@@ -1,0 +1,196 @@
+syntax="proto3";
+package hawking.util;
+
+enum ColumnType {
+    COLUMN_UNKNOW = 0;
+
+    COLUMN_INT8  = 1;
+    COLUMN_INT16 = 2;
+    COLUMN_INT32 = 3;
+    COLUMN_INT64 = 4;
+    COLUMN_FLOAT = 5;
+    COLUMN_DOUBLE = 6;
+    COLUMN_STRING = 7;
+
+    COLUMN_INT8_LIST = 11;
+    COLUMN_INT16_LIST = 12;
+    COLUMN_INT32_LIST = 13;
+    COLUMN_INT64_LIST = 14;
+    COLUMN_FLOAT_LIST = 15;
+    COLUMN_DOUBLE_LIST = 16;
+    COLUMN_STRING_LIST = 17;
+};
+
+message IntList {
+    repeated int64 values = 1;
+}
+message DoubleList {
+    repeated double values = 2;
+}
+message BytesList {
+    repeated bytes values = 3;
+}
+
+message FieldValue {
+    oneof value {
+        int64  int_value    = 4; // 对应COLUMN_INT8，COLUMN_INT16，COLUMN_INT32， COLUMN_INT64
+        double double_value = 6; // 对应 COLUMN_FLOAT，COLUMN_DOUBLE
+        bytes  bytes_value  = 7; // 对应COLUMN_STRING
+       
+        IntList    int_values    = 14; // 对应COLUMN_INT8_LIST，COLUMN_INT16_LIST，COLUMN_INT32_LIST， COLUMN_INT64_LIST
+        DoubleList double_values = 16; // 对应 COLUMN_FLOAT_LIST，COLUMN_DOUBLE_LIST
+        BytesList  bytes_values  = 17; // 对应COLUMN_STRING_LIST
+    }
+};
+
+message LocalColumn {
+    string     name = 1; // 与hbase的qualifier的相对应。
+    ColumnType type = 2; // 加载到索引中字段的类型
+};
+
+message TargetInfo {
+    string name = 1;
+    int32 dim = 2;
+};
+
+enum InferType {
+    INFER_UNKNOW = 0;
+    INFER_IGNORE = 1;
+    INFER_REMOTE = 2;
+    INFER_LOCAL  = 3;
+};
+
+message ModelConf {
+    int64 version = 1;
+    string name = 2;
+    string address = 3;
+};
+
+message KafkaConfig {
+    string broker_addr = 1;
+    string topic = 2;
+    repeated int64 offsets = 3; // from partition 0~N, hawking format must write
+};
+
+message TaskContent {
+    string input_type = 1; // feature、embedding。
+    string input_source = 2; // 数据源类型, hbase，hdfs。
+    string input_address = 3; // 数据源类型, hbase，hdfs。
+    string table_name = 4; // hbase 表名。 check 表是否存在。
+    repeated string column_names = 5; // 需要使用的列名。隐式包含 itemId、featuresInfo。
+    repeated int64 slots = 6; // 过滤留下来的 slot 特征。
+    string index_type = 7; // 索引类型，FAISS_FLAT, FAISS_IVFFLAT, FAISS_IVFPQ, HNSW。
+    int64 max_candidate_count = 8; // 最大的候选数量。
+    int64 hnsw_m = 9; // 最大的连接数量。
+    int64 hnsw_ef_construction = 10; // 最大的动态候选数量。
+    int64 pq_m = 11; // qp 分段。
+    int64 nlist = 12; // ivf 聚类中心。
+    int64 nbits_per_idx = 13; // 二级聚类。
+    int64 dim = 14; // 向量的维度。
+    string metric_type = 15; // 距离类型，距离类型，L2，IP。
+    int64 time_interval = 16; // build 的时间间隔，单位是秒。
+    string model_name = 17; // item模型名。
+    string output_type = 18; // 输出类型 index 或者 embedding 或者 i2i。
+    string output_address = 19; // 当前仅支持hdfs。
+    string user_done_file = 20; // 用户完成数据。
+    repeated string filter_columns = 21; // 过滤条件。
+    string hbase_rowkey_substring = 22; // hbase的rowkey包含的substring，拉去item时过滤用。
+    float decrease_ratio_threshold = 23; // item数的下降阈值，超过该值，不构建索引并报警
+    int32 need_forward_filter = 24; // 是否需要正排预热
+    Expression format_filter_exp = 25; // format 过滤表达式子
+    repeated LocalColumn local_columns = 26; // 实时过滤需要加载的字段信息
+    int32 i2i_max_length = 27; // i2i index, max length of item.
+    repeated TargetInfo targets = 28; // target name of model.
+    int32 infer_type = 29; // embedding获取的方式
+    string model_address = 30; // item模型的存放地址
+    repeated ModelConf bind_models = 31; // user embedding inference model
+    KafkaConfig kafka_config = 32; // kafka meta
+    int64 nprobe  = 33;  // ivf search list number
+    string owner = 100; // 任务创建的owner
+};
+
+message LoadContent {
+    int64 version = 1; // 索引版本号，也是构建索引的时间戳
+    int64 model_version = 2; // 模型版本号，由构建索引所访问的推理服务返回，当前该值为日期
+    int64 item_count = 3; // 构建索引的总item数
+    string model_name = 4; // 推理模型名称
+    string s3_index_file = 5; // s3的download url
+    int32  dim = 6; // 向量的长度
+    string metric_type = 7; // 向量距离度量方式
+    string index_type = 8; // 向量索引类型
+    int32 need_forward_filter = 9; // 是否需要正排预热
+    float accuracy = 10; // 召回数据的准确性, 如果为负值说明为计算准确度
+    int64 time_consuming = 11; // 构建耗时，单位是秒.
+    int64 index_byte_size = 12; // 索引占用的空间大小.
+    string output_type = 13; // 输出类型 index 或者 embedding 或者 i2i。
+    map<int32, int64> slot_miss = 14; // 缺少slot的样本数
+    int64 trunc_item_count = 17; // 丢弃掉的item数
+    repeated ModelConf bind_models = 18;
+    KafkaConfig kafka_config = 19; // kafka meta
+    repeated float mean_embedding = 20;
+    float cosine_similarity = 21; // embedding cosine similarity
+    string s3_debug_file = 22; // s3的debug file download url
+    int64 debug_byte_size = 23; // s3的debug file size
+};
+
+message MasterInfo {
+    string ip = 1;
+    int32 port = 2;
+};
+
+enum ExpressionOp {
+    UNKNOW = 0;
+
+    AND = 1;
+    OR = 2;
+
+    LT = 10;
+    LE = 11;
+    GT = 12;
+    GE = 13;
+    EQ = 14;
+    NE = 15;
+    IN = 16;
+    NI = 17;
+
+    FIELD = 20;
+    INT = 21;
+    FLOAT = 22;
+    STRING = 23;
+
+    CONTAIN = 30;    // filter_context is 1, [1,2,3,4,5](from index) contain 1
+    INTERSECT = 31;  // filter_context is [1,2,3,4,5], [1,2,3](from index) intersect [1,2,3,4,5]
+};
+
+message Expression {
+    ExpressionOp op = 1;
+
+    repeated Expression expressions = 2;
+    string field = 3;
+    repeated int64 ivalues = 4;
+    repeated double fvalues = 5;
+    repeated string svalues = 7;
+};
+
+message FilterColumn {
+    optional string column_name = 1;
+    optional ExpressionOp action = 2;
+    optional FieldValue column_value = 3;
+};
+
+message SelectColumn {
+    optional string column_name = 1;
+    optional FieldValue column_value = 2;
+};
+
+enum FormatResultCode {
+    FORMAT_RESULT_OK = 0;
+    FORMAT_RESULT_ERROR = 1;
+};
+
+message FormatResult {
+    FormatResultCode code = 1;
+    string msg = 2;
+    string ip_port = 3;
+};
+

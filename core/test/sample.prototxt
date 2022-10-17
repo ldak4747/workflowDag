@@ -1,0 +1,117 @@
+graph_confs: {
+    name: "test_service_1"
+    nodes {
+        name: "init1"
+        op_group: "Init1_Op"
+    }
+    nodes {
+        name: "init2"
+        op_group: "Init2_Op"
+    }
+    nodes {
+        name: "ann"
+        op_group: "PreAnn_Op"
+        op_group: "Ann_Op"
+        op_group: "PostAnn_Op"
+        dependencies {
+            name: "init1"
+        }
+        dependencies {
+            name: "init2"
+        }
+    }
+    nodes {
+        name: "short_filter"
+        op_group: "PreFilter_Op"
+        op_group: "Filter1_Op"
+        op_group: "PostFilter_Op"
+        dependencies {
+            name: "ann"
+        }
+    }
+    nodes {
+        name: "long_filter"
+        op_group: "PreFilter_Op"
+        op_group: "Filter2_Op"
+        op_group: "PostFilter_Op"
+        dependencies {
+            name: "ann"
+        }
+    }
+    nodes {
+        name: "udf"
+        op_group: "Udf_Op"
+        dependencies {
+            name: "short_filter"
+        }
+        dependencies {
+            name: "long_filter"
+        }
+    }
+    nodes {
+        name: "response"
+        op_group: "Response_Op"
+        dependencies {
+            name: "udf"
+        }
+    }
+}
+
+graph_confs: {
+    name: "test_service_2"
+    nodes {
+        name: "init1"
+        op_group: "Init1_Op"
+    }
+    nodes {
+        name: "init2"
+        op_group: "Init2_Op"
+    }
+    nodes {
+        name: "ann"
+        op_group: "PreAnn_Op"
+        op_group: "Ann_Op"
+        op_group: "PostAnn_Op"
+        dependencies {
+            name: "init1"
+        }
+        dependencies {
+            name: "init2"
+        }
+    }
+    nodes {
+        name: "short_filter"
+        op_group: "PreFilter_Op"
+        op_group: "Filter1_Op"
+        op_group: "PostFilter_Op"
+        dependencies {
+            name: "ann"
+        }
+    }
+    nodes {
+        name: "long_filter"
+        op_group: "PreFilter_Op"
+        op_group: "Filter2_Op"
+        op_group: "PostFilter_Op"
+        dependencies {
+            name: "ann"
+        }
+    }
+    nodes {
+        name: "udf"
+        op_group: "Udf_Op"
+        dependencies {
+            name: "short_filter"
+        }
+        dependencies {
+            name: "long_filter"
+        }
+    }
+    nodes {
+        name: "response"
+        op_group: "Response_Op"
+        dependencies {
+            name: "udf"
+        }
+    }
+}

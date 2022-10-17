@@ -1,0 +1,6 @@
+syntax="proto2";
+package hawking;
+
+message Embedding {
+  repeated float value = 1;
+}

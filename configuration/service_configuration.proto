@@ -1,0 +1,24 @@
+syntax = "proto3";
+package hawking.graph;
+
+
+// DAG node depency info
+message DagNodeDependency {
+    string name = 1;
+};
+
+// DAG Node
+message DagNode {
+    string name = 1;
+    repeated string op_group = 2;
+    repeated DagNodeDependency dependencies = 3;
+};
+
+message GraphConf {
+    string name = 1;
+    repeated DagNode nodes = 2;
+};
+
+message GraphConfs {
+    repeated GraphConf graph_confs = 1;
+}
